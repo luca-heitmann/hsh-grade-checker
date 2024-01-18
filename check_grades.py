@@ -41,9 +41,7 @@ def getGrades(user, passwd):
         driver.find_element(By.XPATH, "//a[@title = 'Leistungen für Abschluss 84 Bachelor anzeigen']").click()
         # Parse grade overview
         noten = pd.read_html(driver.page_source, decimal=",", thousands=".", header=1)[1]
-        noten = noten.dropna(subset=['Prüfungsdatum'])
         noten['Prüfungsdatum'] = pd.to_datetime(noten['Prüfungsdatum'], format = '%d%m%Y')
-        noten = noten.astype({'Prüfungsnr.': 'int64'})
         noten.to_csv("noten.csv")
         print("Found grades: ", noten)
         return noten
