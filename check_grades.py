@@ -22,10 +22,11 @@ prev_noten_name = "noten.csv"
 selenium_remote = os.getenv('SELENIUM_REMOTE')
 
 def getGrades(user, passwd):
-    url = "https://campusmanagement.hs-hannover.de/qisserver/pages/cs/sys/portal/hisinoneStartPage.faces" 
+    print("Trying to scrape grades")
 
-    with webdriver.Remote(command_executor=selenium_remote) as driver: 
-        driver.get(url)
+    with webdriver.Remote(options = webdriver.ChromeOptions(), command_executor=selenium_remote) as driver: 
+        driver.implicitly_wait(30)
+        driver.get("https://campusmanagement.hs-hannover.de/qisserver/pages/cs/sys/portal/hisinoneStartPage.faces")
         # Login
         driver.find_element(By.ID, "asdf").send_keys(user)
         driver.find_element(By.ID, "fdsa").send_keys(passwd)
@@ -44,6 +45,7 @@ def getGrades(user, passwd):
         noten['Prüfungsdatum'] = pd.to_datetime(noten['Prüfungsdatum'], format = '%d%m%Y')
         noten = noten.astype({'Prüfungsnr.': 'int64'})
         noten.to_csv("noten.csv")
+        print("Found grades: ", noten)
         return noten
 
 def checkChanges(notenNeu):
