@@ -3,6 +3,8 @@ Periodically fetches HSH iCMS for new grades and sends an email if a new grade w
 
 ### Configuration
 
+TODO describe selenium setup
+
 Environment variables (* required):
 - ICMS_USERNAME*: String
 - ICMS_PASSWORD*: String
@@ -15,12 +17,13 @@ Environment variables (* required):
 - SMTP_DEBUG: Int (0 = off (default) / 1 = on)
 - REFRESH_SECONDS: Int (300 default => fetches every 5 min)
 - SIGN_OF_LIFE_AFTER_REFRESHES: Int (120 default => sign of life every 5min*120 = 600min = 10h)
+- SELENIUM_REMOTE: String (e.g. http://localhost:4444/wd/hub)
 
 ### Docker Usage
 
 ```bash
 docker run -d \
-    -e ICMS_USERNAME="xxx-xxx-u1" \
+    -e ICMS_USERNAME="xxx-xxx-sso" \
     -e ICMS_PASSWORD="xxx" \
     -e SMTP_SERVER="xxx" \
     -e SMTP_PORT="587" \

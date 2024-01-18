@@ -1,5 +1,5 @@
-import requests
-from lxml import html
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 import pandas as pd
 import os.path
 import smtplib, ssl
@@ -19,36 +19,31 @@ smtp_debug = int(os.getenv('SMTP_DEBUG'))
 refresh_seconds = int(os.getenv('REFRESH_SECONDS'))
 sign_of_life_after_refreshes = int(os.getenv('SIGN_OF_LIFE_AFTER_REFRESHES'))
 prev_noten_name = "noten.csv"
+selenium_remote = os.getenv('SELENIUM_REMOTE')
 
 def getGrades(user, passwd):
-    with requests.Session() as s:
-        res = s.post('https://icms.hs-hannover.de/qisserver/rds?state=user&type=1&category=auth.login&startpage=portal.vm',
-                     headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                     data=f"asdf={user}&fdsa={passwd}%21&submit=%C2%A0Ok%C2%A0",
-                     allow_redirects=False)
+    url = "https://campusmanagement.hs-hannover.de/qisserver/pages/cs/sys/portal/hisinoneStartPage.faces" 
 
-        sessionIdCookie = res.headers.get("Set-Cookie").split(";")[0]
-        s.headers.update({'Cookie': sessionIdCookie})
-
-        if 'Anmeldung fehlgeschlagen' in res.text:
-            raise Exception("Anmeldung fehlgeschlagen")
-
-        res = s.get("https://icms.hs-hannover.de/qisserver/rds?state=change&type=1&moduleParameter=studyPOSMenu&nextdir=change&next=menu.vm&subdir=applications&xml=menu&purge=y&navigationPosition=functions%2CstudyPOSMenu&breadcrumb=studyPOSMenu&topitem=functions&subitem=studyPOSMenu")
-
-        tree = html.fromstring(res.content)
-        notenspiegelUrl = tree.xpath('//a[text() = "Notenspiegel"]/@href')[0]
-
-        res = s.get(notenspiegelUrl)
-        tree = html.fromstring(res.content)
-        leistungenUrl = tree.xpath('//a[@title = "Leistungen für Abschluss 84 Bachelor anzeigen"]/@href')[0]
-
-        res = s.get(leistungenUrl)
-        tree = html.fromstring(res.content)
-
-        noten = pd.read_html(res.content, decimal=",", thousands=".", header=1)[1]
+    with webdriver.Remote(command_executor=selenium_remote) as driver: 
+        driver.get(url)
+        # Login
+        driver.find_element(By.ID, "asdf").send_keys(user)
+        driver.find_element(By.ID, "fdsa").send_keys(passwd)
+        driver.find_element(By.ID, "loginForm:login").click()
+        # Navigate to ICMS
+        driver.find_element(By.CLASS_NAME, "tile_one").click()
+        iframe = driver.find_element(By.TAG_NAME, "iframe")
+        driver.switch_to.frame(iframe)
+        # Navigate to grade overview
+        driver.find_element(By.XPATH, "//a[text() = 'Prüfungen']").click()
+        driver.find_element(By.XPATH, "//a[text() = 'Notenspiegel']").click()
+        driver.find_element(By.XPATH, "//a[@title = 'Leistungen für Abschluss 84 Bachelor anzeigen']").click()
+        # Parse grade overview
+        noten = pd.read_html(driver.page_source, decimal=",", thousands=".", header=1)[1]
         noten = noten.dropna(subset=['Prüfungsdatum'])
         noten['Prüfungsdatum'] = pd.to_datetime(noten['Prüfungsdatum'], format = '%d%m%Y')
         noten = noten.astype({'Prüfungsnr.': 'int64'})
+        noten.to_csv("noten.csv")
         return noten
 
 def checkChanges(notenNeu):
