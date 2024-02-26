@@ -39,21 +39,22 @@ def getGrades(user, passwd):
         driver.find_element(By.XPATH, "//a[text() = 'Prüfungen']").click()
         driver.find_element(By.XPATH, "//a[text() = 'Notenspiegel']").click()
         driver.find_element(By.XPATH, "//a[@title = 'Leistungen für Abschluss 84 Bachelor anzeigen']").click()
-        # Parse grade overview
-        noten = pd.read_html(driver.page_source, decimal=",", thousands=".", header=1)[1]
-        noten['Prüfungsdatum'] = pd.to_datetime(noten['Prüfungsdatum'], format = '%d%m%Y')
-        noten.to_csv("noten.csv")
-        print("Found grades: ", noten)
-        return noten
+        return driver.page_source
+
+def parseGrades(noten):
+    noten = pd.read_html(noten, decimal=",", thousands=".", header=1)[1]
+    return noten
 
 def checkChanges(notenNeu):
     if os.path.isfile(prev_noten_name):
-        return not pd.read_csv(prev_noten_name, index_col=0, parse_dates=['Prüfungsdatum']).equals(notenNeu)
+        with open("noten.html", "r", encoding="utf-8") as f:
+            return not notenNeu.to_html().equals(f.read())
     else:
         return True
 
 def storeGrades(notenNeu):
-    notenNeu.to_csv(prev_noten_name)
+    with open("noten.html", "w", encoding="utf-8") as f:
+        f.write(notenNeu.to_html())
 
 def sendMail(subject, payload):
     msg = MIMEMultipart('alternative')
@@ -78,19 +79,25 @@ def sendMail(subject, payload):
 counter = 0
 
 while (True):
-    noten = getGrades(username, password)
-    
-    if counter == 0:
-        print("Sende sign of life")
-        sendMail("Notentool Sign Of Life", noten.to_html())
-        counter = sign_of_life_after_refreshes
+    try:
+        notenHtml = getGrades(username, password)
+        noten = parseGrades(notenHtml)
+        
+        if counter == 0:
+            print("Sende sign of life")
+            sendMail("Notentool Sign Of Life", notenHtml)
+            counter = sign_of_life_after_refreshes
 
-    if checkChanges(noten):
-        print(f"Neue Note gefunden")
-        sendMail("Neue Note gefunden!", noten.to_html())
-    else:
-        print("Keine neuen Noten")
+        if checkChanges(noten):
+            print(f"Neue Note gefunden")
+            sendMail("Neue Note gefunden!", notenHtml)
+        else:
+            print("Keine neuen Noten")
 
-    storeGrades(noten)
-    counter -= 1
-    time.sleep(refresh_seconds)
+        storeGrades(noten)
+        counter -= 1
+    except Exception as e:
+        print("Noten konnten nicht abgerufen werden :o")
+        print(e)
+    finally:
+        time.sleep(refresh_seconds)

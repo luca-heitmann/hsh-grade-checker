@@ -1,0 +1,17 @@
+version: "3"
+services:
+  chrome:
+    image: selenium/standalone-chrome
+    shm_size: 2gb
+  hsh-grade-checker:
+    image: ghcr.io/luca-heitmann/hsh-grade-checker:2.1.7
+    environment:
+      ICMS_USERNAME: "xxx-hsh-sso"
+      ICMS_PASSWORD: "xxx"
+      SMTP_SERVER: "smtp.sendgrid.net"
+      SMTP_PORT: "587"
+      SMTP_FROM: "mail-sender@domain.io"
+      SMTP_TO: "mail-receiver@domain.io"
+      SMTP_USERNAME: "apikey"
+      SMTP_PASSWORD: "xxx"
+      SELENIUM_REMOTE: "http://chrome:4444/wd/hub"
