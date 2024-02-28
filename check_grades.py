@@ -18,13 +18,13 @@ smtp_password = os.getenv('SMTP_PASSWORD')
 smtp_debug = int(os.getenv('SMTP_DEBUG'))
 refresh_seconds = int(os.getenv('REFRESH_SECONDS'))
 sign_of_life_after_refreshes = int(os.getenv('SIGN_OF_LIFE_AFTER_REFRESHES'))
-prev_noten_name = "noten.csv"
+prev_noten_name = "noten.html"
 selenium_remote = os.getenv('SELENIUM_REMOTE')
 
 def getGrades(user, passwd):
     print("Trying to scrape grades")
 
-    with webdriver.Remote(options = webdriver.ChromeOptions(), command_executor=selenium_remote) as driver: 
+    with webdriver.Remote(options = webdriver.ChromeOptions(), command_executor=selenium_remote) as driver:
         driver.implicitly_wait(30)
         driver.get("https://campusmanagement.hs-hannover.de/qisserver/pages/cs/sys/portal/hisinoneStartPage.faces")
         # Login
@@ -41,19 +41,18 @@ def getGrades(user, passwd):
         driver.find_element(By.XPATH, "//a[@title = 'Leistungen für Abschluss 84 Bachelor anzeigen']").click()
         return driver.page_source
 
-def parseGrades(noten):
-    noten = pd.read_html(noten, decimal=",", thousands=".", header=1)[1]
-    return noten
+def parseGrades(notenHtml):
+    return pd.read_html(notenHtml, decimal=",", thousands=".", header=1)[1]
 
 def checkChanges(notenNeu):
     if os.path.isfile(prev_noten_name):
-        with open("noten.html", "r", encoding="utf-8") as f:
-            return not notenNeu.to_html().equals(f.read())
+        with open(prev_noten_name, "r", encoding="utf-8") as f:
+            return not notenNeu.to_html() == f.read()
     else:
         return True
 
 def storeGrades(notenNeu):
-    with open("noten.html", "w", encoding="utf-8") as f:
+    with open(prev_noten_name, "w", encoding="utf-8") as f:
         f.write(notenNeu.to_html())
 
 def sendMail(subject, payload):
@@ -89,10 +88,10 @@ while (True):
             counter = sign_of_life_after_refreshes
 
         if checkChanges(noten):
-            print(f"Neue Note gefunden")
+            print("Neue Note gefunden", noten)
             sendMail("Neue Note gefunden!", notenHtml)
         else:
-            print("Keine neuen Noten")
+            print("Keine neuen Noten", noten)
 
         storeGrades(noten)
         counter -= 1
